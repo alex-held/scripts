@@ -33,84 +33,70 @@ if (( $# < 2 )); then
     usage
     exit 1
 else
-  src=$1 
-  dest=$2 
+  src=$1
+  shift
+  dest=$1
+  shift
 fi
 
-# use getopt and store the output into $OPTS
-# note the use of -o for the short options, --long for the long name options
-# and a : for any option that takes a parameter
 
-short=hdvg:
-long=help,dry-run,verbose,glob:
-
-
-OPTS=$(getopt --options $short --long $long --name "$progname" -- "$@")
+OPTS=$(gnu-getopt -u --options "hvdg:" --long "verbose,dry-run,help,glob:" --name "$(basename $0)" -- "$@")
 if [ $? != 0 ] ; then echo "Error in command line arguments." >&2 ; exit 1 ; fi
 eval set -- "$OPTS"
 
-while true; do
-  # uncomment the next line to see how shift is working
-  echo "\$1:\"$1\" \$2:\"$2\""
-  
+
+while true;
+do
   case "$1" in
-    -h | --help)
-	usage
-	exit 0
-	;;
-    -d | --dry-run)
-	dryrun=true
-	shift
-	;;
-    -v | --verbose)
-	verbose=true
-	shift
-	;;
-    -g | --glob)
-	glob="$2";
-	shift 2
-	;;
-    -- )
-	shift
-	break
-	;;
-    * ) 
-	break
-	usage
-	exit 1
-	;;
+    -h|--help|-\?) usage; exit;;
+    -v|--verbose) verbose=true;;
+    -d|--dry-run) dryrun=true;;
+    -g|--glob) glob="$2"; shift;;
+    (--) shift; break;;
+    (-*) echo "$0: error - unrecognized option $1" 1>&2; usage; exit 1;;
+    (*) break;;
   esac
+  shift
 done
 
 
-if [ "$verbose" == "true" ]; then
-
+if [ $verbose == true ]; then
     cat <<EOM
-    src=$src
-    dest=$dest
-    glob=$glob
-    verbose=$verbose
-    dryrun=$dryrun
+
+--- verbose output ---
+src:        $src
+dest:       $dest
+
+glob:       $glob
+verbose:    $verbose
+dry-runn:   $dryrun
+----------------------
+
 EOM
 fi
 
 
-if [ -n $glob ]; then
+if [ -z $glob ]; then
   cmd="ls -1 $src | xargs -J {} mv {} $dest" 
 else
-  cmd="ls -1 $src | grep --line-buffered -e '$glob' | xargs -J {} mv {} $dest"
+  cmd="ls -1 $src | grep --line-buffered -e \"$glob\" | xargs -J {} mv {} $dest"
 fi 
-
-
 
 
 if [ "$dryrun" == "true" ]; then
  
-  echo "DRYRUN: Not moving any files..." 
-  echo "Command to be executed: '$cmd'"
+    cat <<EOM
+
+--- DRY RUN ---
+source directory:        $src
+target directory:        $dest
+
+command: $cmd
+----------------------
+
+EOM
 
 else
-  echo "Executing command!!"
   echo "$cmd"
 fi
 
